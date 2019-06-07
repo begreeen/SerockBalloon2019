@@ -10,6 +10,7 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
+#include <ArduinoLowPower.h>
 
 using namespace CanSatKit;
 
@@ -144,8 +145,6 @@ void setup() {
   SerialUSB.println("wait for low!");
   while (digitalRead(gps_wakeup) != LOW) {}
 
-
-
   SerialUSB.println("gps woke up!");
   SerialUSB.println("sending on_off pulse!");
   delay(100);
@@ -221,7 +220,7 @@ static_assert(sizeof(radio_frame) == 18, "align?");
 
 void loop()
 {
-  
+  LowPower.idle();
   if (new_data() || timeout()) {
     bme.takeForcedMeasurement();
     auto temperature = bme.readTemperature();
