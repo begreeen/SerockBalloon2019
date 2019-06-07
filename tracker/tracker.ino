@@ -8,13 +8,12 @@
 #include <CanSatKit.h>
 #include <TinyGPS++.h>
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
+#include <BME280I2C.h>
 #include <ArduinoLowPower.h>
 
 using namespace CanSatKit;
 
-Adafruit_BME280 bme;
+BME280I2C bme;
 
 constexpr auto LED = 13;
 
@@ -116,19 +115,14 @@ void setup() {
 
   Serial.begin(4800);
   SerialUSB.begin(9600);
+  Wire.begin();
   while (!SerialUSB);
 
   SerialUSB.println("start!");
 
-  if (!bme.begin(&Wire)) {
+  if (!bme.begin()) {
     SerialUSB.println("Could not find a valid BME280 sensor, check wiring!");
   }
-
-  bme.setSampling(Adafruit_BME280::MODE_FORCED,
-                  Adafruit_BME280::SAMPLING_X1, // temperature
-                  Adafruit_BME280::SAMPLING_X1, // pressure
-                  Adafruit_BME280::SAMPLING_X1, // humidity
-                  Adafruit_BME280::FILTER_OFF);
 
   digitalWrite(gps_on_off, LOW);
 
@@ -220,14 +214,8 @@ static_assert(sizeof(radio_frame) == 18, "align?");
 
 void loop()
 {
-  LowPower.idle();
+  //LowPower.idle();
   if (new_data() || timeout()) {
-    bme.takeForcedMeasurement();
-    auto temperature = bme.readTemperature();
-    auto pressure = bme.readPressure();
-    auto humidity = bme.readHumidity();
-
-    
     last_sentencesWithFix = gps.sentencesWithFix();
     last_tx_time = millis();
     
@@ -240,13 +228,18 @@ void loop()
     printInt(gps.charsProcessed(), true, 6);
     printInt(gps.sentencesWithFix(), true, 10);
     printInt(gps.failedChecksum(), true, 9);
-    SerialUSB.println();
+    
   
     static bool gps_setted_up = false;
     if (gps.location.isValid() && !gps_setted_up) {
       gps_setted_up = true;
       setup_power_mode();
     }
+
+    float temperature, humidity, pressure;
+    BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
+    BME280::PresUnit presUnit(BME280::PresUnit_Pa);
+    bme.read(pressure, temperature, humidity, tempUnit, presUnit);
 
     static bool state = false;
     state = !state;
@@ -261,6 +254,7 @@ void loop()
     frame.humidity = static_cast<int8_t>(humidity);
     
     radio.transmit(reinterpret_cast<const uint8_t*>(&frame), sizeof(frame));
+    SerialUSB.println();
   }
   smartDelay(0);
 }
