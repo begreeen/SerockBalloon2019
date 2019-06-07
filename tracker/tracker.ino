@@ -7,8 +7,13 @@
 
 #include <CanSatKit.h>
 #include <TinyGPS++.h>
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
+
 using namespace CanSatKit;
 
+Adafruit_BME280 bme;
 
 constexpr auto LED = 13;
 
@@ -21,10 +26,8 @@ Radio radio(Pins::Radio::ChipSelect,
             Pins::Radio::DIO0,
             433.0,
             Bandwidth_125000_Hz,
-            SpreadingFactor_9,
+            SpreadingFactor_11,
             CodingRate_4_8);
-
-Frame frame;
 
 TinyGPSPlus gps;
 
@@ -32,7 +35,7 @@ uint8_t calculate_checksum(const char * cmd) {
   auto len = strlen(cmd);
   len--; // without last byte (*)
   uint8_t crc = 0;
-  for (int i = 1; i < len; ++i) {
+  for (uint8_t i = 1; i < len; ++i) {
     crc ^= cmd[i];
   }
   return crc;
@@ -96,8 +99,10 @@ void setup_power_mode() {
   delay(1000);
   switch_to_nmea();
   delay(2000);
+  // wait for NMEA, clear queue
   while (Serial.available()) {
     volatile char d = Serial.read();
+    (void)d;
   }
 }
 
@@ -113,6 +118,16 @@ void setup() {
   while (!SerialUSB);
 
   SerialUSB.println("start!");
+
+  if (!bme.begin(&Wire)) {
+    SerialUSB.println("Could not find a valid BME280 sensor, check wiring!");
+  }
+
+  bme.setSampling(Adafruit_BME280::MODE_FORCED,
+                  Adafruit_BME280::SAMPLING_X1, // temperature
+                  Adafruit_BME280::SAMPLING_X1, // pressure
+                  Adafruit_BME280::SAMPLING_X1, // humidity
+                  Adafruit_BME280::FILTER_OFF);
 
   digitalWrite(gps_on_off, LOW);
 
@@ -148,7 +163,6 @@ void setup() {
   radio.begin();
   radio.disable_debug();
 
-  frame.print("testtesttesttesttesttesttesttesttest");
   digitalWrite(LED, HIGH);
 
   SerialUSB.print((int)digitalRead(gps_pps));
@@ -180,21 +194,41 @@ void setup() {
 //}
 
 
-static auto last_sentencesWithFix = 0;
-static auto last_tx_time = 0;
+static uint32_t last_sentencesWithFix = 0;
+static uint32_t last_tx_time = 0;
 
 bool new_data() {
   return last_sentencesWithFix != gps.sentencesWithFix();
 }
 
 bool timeout() {
-  return millis() > last_tx_time + 6000;
+  return millis() > last_tx_time + 6000u;
 }
+
+struct radio_frame {
+  float latitude;
+  float longitude;
+  int16_t altitude_msl;
+  int16_t temperature;
+  float pressure;
+  int8_t humidity;
+  int8_t satellites;
+} __attribute__((packed));
+
+radio_frame frame;
+
+static_assert(sizeof(radio_frame) == 18, "align?");
 
 void loop()
 {
   
   if (new_data() || timeout()) {
+    bme.takeForcedMeasurement();
+    auto temperature = bme.readTemperature();
+    auto pressure = bme.readPressure();
+    auto humidity = bme.readHumidity();
+
+    
     last_sentencesWithFix = gps.sentencesWithFix();
     last_tx_time = millis();
     
@@ -219,7 +253,15 @@ void loop()
     state = !state;
     digitalWrite(LED, state);
 
-    radio.transmit(frame);
+    frame.satellites = gps.satellites.isValid() ? gps.satellites.value() : -1;
+    frame.latitude = gps.location.isValid() ? gps.location.lat() : 0;
+    frame.longitude = gps.location.isValid() ? gps.location.lng() : 0;
+    frame.altitude_msl = gps.altitude.isValid() ? static_cast<int16_t>(gps.altitude.meters()) : 0;
+    frame.temperature = static_cast<int16_t>(10*temperature);
+    frame.pressure = pressure;
+    frame.humidity = static_cast<int8_t>(humidity);
+    
+    radio.transmit(reinterpret_cast<const uint8_t*>(&frame), sizeof(frame));
   }
   smartDelay(0);
 }
@@ -298,13 +340,5 @@ static void printDateTime(TinyGPSDate &d, TinyGPSTime &t)
   }
 
   printInt(d.age(), d.isValid(), 5);
-  smartDelay(0);
-}
-
-static void printStr(const char *str, int len)
-{
-  int slen = strlen(str);
-  for (int i=0; i<len; ++i)
-    SerialUSB.print(i<slen ? str[i] : ' ');
   smartDelay(0);
 }
