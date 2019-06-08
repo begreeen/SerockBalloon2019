@@ -35,7 +35,7 @@ def drawFigure(): # Create a function that makes our desired plot
 
 
 #ser = serial.Serial('COM6')
-ser = serial_mock.SerialMock('D:\\Documents\\GitHub\\SerockBalloon2019\\mock\\gs-data-feeder\\test_data.csv', 1)
+ser = serial_mock.SerialMock('D:\\Documents\\GitHub\\SerockBalloon2019\\mock\\gs-data-feeder\\test_data.csv', 0.1)
 
 # create/append output.csv + header
 with open(output_file_name, 'a') as output:
