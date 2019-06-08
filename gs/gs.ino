@@ -1,4 +1,6 @@
 #include <CanSatKit.h>
+#include <SPI.h>
+#include <SD.h>
 
 using namespace CanSatKit;
 
@@ -17,6 +19,9 @@ struct radio_frame {
 static_assert(sizeof(radio_frame) == 18, "align?");
 
 
+constexpr int chipSelect = 11;
+File dataFile;
+
 
 // set radio receiver parameters - see comments below
 // remember to set the same radio parameters in
@@ -33,6 +38,19 @@ void setup() {
 
   // start radio module  
   radio.begin();
+
+
+  SerialUSB.print("Initializing SD card...");
+
+  // see if the card is present and can be initialized:
+  if (!SD.begin(chipSelect)) {
+    SerialUSB.println("Card failed, or not present");
+    // don't do anything more:
+  } else {
+    SerialUSB.println("card initialized.");
+    dataFile = SD.open("datalog.csv", FILE_WRITE);
+  }
+
 }
 
 void loop() {
@@ -50,24 +68,42 @@ void loop() {
 
   static uint32_t counter = 0;
   counter++;  
-  SerialUSB.print(millis());
-  SerialUSB.print(';');
-  SerialUSB.print(counter);
-  SerialUSB.print(';');
-  SerialUSB.print(radio.get_rssi_last());
-  SerialUSB.print(';');
-  SerialUSB.print(f->satellites);
-  SerialUSB.print(';');
-  SerialUSB.print(f->longitude);
-  SerialUSB.print(';');
-  SerialUSB.print(f->latitude);
-  SerialUSB.print(';');
-  SerialUSB.print(f->altitude_msl);
-  SerialUSB.print(';');
-  SerialUSB.print(f->temperature);
-  SerialUSB.print(';');
-  SerialUSB.print(f->pressure);
-  SerialUSB.print(';');
-  SerialUSB.print(f->humidity);  
-  SerialUSB.println();
+
+
+  String data_string = "";
+
+  data_string += String(millis());
+  data_string += ";";
+  data_string += String(counter);
+  data_string += ";";
+  data_string += String(radio.get_rssi_last());
+  data_string += ";";
+  data_string += String(f->satellites);
+  data_string += ";";
+  data_string += String(f->longitude);
+  data_string += ";";
+  data_string += String(f->latitude);
+  data_string += ";";
+  data_string += String(f->altitude_msl);
+  data_string += ";";
+  data_string += String(f->temperature);
+  data_string += ";";
+  data_string += String(f->pressure);
+  data_string += ";";
+  data_string += String(f->humidity);
+  data_string += String("\n");
+
+
+  SerialUSB.print(data_string);
+
+  // if the file is available, write to it:
+  if (dataFile) {
+    dataFile.println(data_string);
+    dataFile.close();
+  }
+  // if the file isn't open, pop up an error:
+  else {
+    SerialUSB.println("error opening datalog.txt");
+  }
+
 }
