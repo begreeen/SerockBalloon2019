@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import serial
+import serial_mock
 import simplekml
 import matplotlib.pyplot as plt
 import datetime
@@ -14,7 +15,8 @@ coordinates = []
 alt = []
 time = []
 
-ser = serial.Serial('COM6')
+#ser = serial.Serial('COM6')
+ser = serial_mock.SerialMock('D:\\Documents\\GitHub\\SerockBalloon2019\\mock\\gs-data-feeder\\test_data.csv')
 
 # create/append output.csv + header
 with open(output_file_name, 'a') as output:
