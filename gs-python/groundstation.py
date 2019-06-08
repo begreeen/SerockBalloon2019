@@ -26,13 +26,14 @@ def drawFigure(): # Create a function that makes our desired plot
     plt.ylabel('Altitude [m]') # Set ylabels
 
     plt.plot(time, alt, 'ro-', label='Altitude [m]') # plot the altitude
+    plt.legend(loc='upper left') # plot the legend
 
     plt2=plt.twinx()
     plt2.set_ylabel('Pressure [Pa]') # Set ylabels
 
     plt2.plot(time, all_pressure, 'bo-', label='Pressure [Pa]') # plot the altitude
-
-    plt.legend(loc='upper left') # plot the legend
+    plt2.legend(loc='upper right') # plot the legend
+    
 
 #ser = serial.Serial('COM6')
 ser = serial_mock.SerialMock('..\\mock\\gs-data-feeder\\test_data.csv', 0.1)
