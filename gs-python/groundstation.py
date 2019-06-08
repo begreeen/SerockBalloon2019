@@ -5,6 +5,8 @@ import serial
 import serial_mock
 import simplekml
 import matplotlib.pyplot as plt
+from drawnow import *
+
 import datetime
 
 # konfiguracja
@@ -13,10 +15,27 @@ output_file_name = "output.csv"
 
 coordinates = []
 alt = []
+all_pressure = []
 time = []
 
+
+def drawFigure(): # Create a function that makes our desired plot
+    plt.title('Live data') # Plot the title
+    plt.grid(True) # Turn the grid on
+    plt.ylabel('Altitude [m]') # Set ylabels
+
+    plt.plot(time, alt, 'ro-', label='Altitude [m]') # plot the altitude
+    plt.legend(loc='upper left') # plot the legend
+
+    plt2=plt.twinx()
+    plt2.set_ylabel('Pressure [Pa]') # Set ylabels
+
+    plt2.plot(time, all_pressure, 'bo-', label='Pressure [Pa]') # plot the altitude
+    #plt2.legend(loc='upper left') # plot the legend
+
+
 #ser = serial.Serial('COM6')
-ser = serial_mock.SerialMock('D:\\Documents\\GitHub\\SerockBalloon2019\\mock\\gs-data-feeder\\test_data.csv')
+ser = serial_mock.SerialMock('D:\\Documents\\GitHub\\SerockBalloon2019\\mock\\gs-data-feeder\\test_data.csv', 1)
 
 # create/append output.csv + header
 with open(output_file_name, 'a') as output:
@@ -90,10 +109,7 @@ while True:
     # dodaj aktualną wysokość i czas do tablicy z danymi
     time.append(timestamp)
     alt.append(altitude)
+    all_pressure.append(pressure)
 
     # pyplot (temporary)
-    ax.clear()
-    ax.plot(time, alt)
-    plt.show()
-    plt.pause(0.01)
-
+    drawnow(drawFigure)
