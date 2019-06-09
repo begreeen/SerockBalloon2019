@@ -1,3 +1,5 @@
+//#define DEBUG
+
 /* docs
  *  https://www.sparkfun.com/datasheets/GPS/NMEA%20Reference%20Manual-Rev2.1-Dec07.pdf
  *  https://origingps.com/wp-content/uploads/2018/08/Spider-and-Hornet-Low-Power-Operating-Mode-Application-Note-SiRFStarIV.pdf
@@ -24,7 +26,7 @@ constexpr auto gps_pps = 8;
 
 Radio radio(Pins::Radio::ChipSelect,
             Pins::Radio::DIO0,
-            433.0,
+            434.0,
             Bandwidth_125000_Hz,
             SpreadingFactor_11,
             CodingRate_4_8);
@@ -114,9 +116,12 @@ void setup() {
   pinMode(gps_pps, INPUT);
 
   Serial.begin(4800);
-  SerialUSB.begin(9600);
   Wire.begin();
+  
+#ifdef DEBUG
+  SerialUSB.begin(9600);
   while (!SerialUSB);
+#endif
 
   SerialUSB.println("start!");
 
@@ -214,11 +219,15 @@ static_assert(sizeof(radio_frame) == 18, "align?");
 
 void loop()
 {
-  //LowPower.idle();
+#ifndef DEBUG
+  LowPower.idle();
+#endif
+
   if (new_data() || timeout()) {
     last_sentencesWithFix = gps.sentencesWithFix();
     last_tx_time = millis();
-    
+
+#ifdef DEBUG
     printInt(gps.satellites.value(), gps.satellites.isValid(), 5);
     printFloat(gps.location.lat(), gps.location.isValid(), 11, 6);
     printFloat(gps.location.lng(), gps.location.isValid(), 12, 6);
@@ -229,6 +238,8 @@ void loop()
     printInt(gps.sentencesWithFix(), true, 10);
     printInt(gps.failedChecksum(), true, 9);
     
+    SerialUSB.println();
+#endif    
   
     static bool gps_setted_up = false;
     if (gps.location.isValid() && !gps_setted_up) {
@@ -254,26 +265,19 @@ void loop()
     frame.humidity = static_cast<int8_t>(humidity);
     
     radio.transmit(reinterpret_cast<const uint8_t*>(&frame), sizeof(frame));
-    SerialUSB.println();
   }
-  smartDelay(0);
+  clear_nmea_queue();
 }
 
-// This custom version of delay() ensures that the gps object
-// is being "fed".
-static void smartDelay(unsigned long ms)
+static void clear_nmea_queue()
 {
-  unsigned long start = millis();
-  do 
-  {
-    while (Serial.available()) {
-      char d = Serial.read();
-      //SerialUSB.print(d);
-      gps.encode(d);
-    }
-  } while (millis() - start < ms);
+  while (Serial.available()) {
+    char d = Serial.read();
+    gps.encode(d);
+  }
 }
 
+#ifdef DEBUG
 static void printFloat(float val, bool valid, int len, int prec)
 {
   if (!valid)
@@ -291,7 +295,7 @@ static void printFloat(float val, bool valid, int len, int prec)
     for (int i=flen; i<len; ++i)
       SerialUSB.print(' ');
   }
-  smartDelay(0);
+  clear_nmea_queue();
 }
 
 static void printInt(unsigned long val, bool valid, int len)
@@ -305,7 +309,7 @@ static void printInt(unsigned long val, bool valid, int len)
   if (len > 0) 
     sz[len-1] = ' ';
   SerialUSB.print(sz);
-  smartDelay(0);
+  clear_nmea_queue();
 }
 
 static void printDateTime(TinyGPSDate &d, TinyGPSTime &t)
@@ -333,5 +337,6 @@ static void printDateTime(TinyGPSDate &d, TinyGPSTime &t)
   }
 
   printInt(d.age(), d.isValid(), 5);
-  smartDelay(0);
+  clear_nmea_queue();
 }
+#endif
