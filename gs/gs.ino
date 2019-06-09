@@ -18,17 +18,16 @@ struct radio_frame {
 
 static_assert(sizeof(radio_frame) == 18, "align?");
 
-
-constexpr int chipSelect = 11;
+constexpr int chipSelect = Pins::EM1::SD::ChipSelect;
 File dataFile;
 
 
 // set radio receiver parameters - see comments below
 // remember to set the same radio parameters in
 // transmitter and receiver boards!
-Radio radio(Pins::Radio::ChipSelect,
-            Pins::Radio::DIO0,
-            433.0,                  // frequency in MHz
+Radio radio(Pins::EM1::Radio::ChipSelect,
+            Pins::EM1::Radio::DIO0,
+            435.0,                  // frequency in MHz
             Bandwidth_125000_Hz,    // bandwidth - check with CanSat regulations to set allowed value
             SpreadingFactor_11,      // see provided presentations to determine which setting is the best
             CodingRate_4_8);        // see provided presentations to determine which setting is the best
@@ -80,9 +79,9 @@ void loop() {
   data_string += ";";
   data_string += String(f->satellites);
   data_string += ";";
-  data_string += String(f->longitude);
+  data_string += String(f->longitude, 6);
   data_string += ";";
-  data_string += String(f->latitude);
+  data_string += String(f->latitude, 6);
   data_string += ";";
   data_string += String(f->altitude_msl);
   data_string += ";";
@@ -91,15 +90,12 @@ void loop() {
   data_string += String(f->pressure);
   data_string += ";";
   data_string += String(f->humidity);
-  data_string += String("\n");
 
-
-  SerialUSB.print(data_string);
+  SerialUSB.println(data_string);
 
   // if the file is available, write to it:
   if (dataFile) {
     dataFile.println(data_string);
-    dataFile.close();
   }
   // if the file isn't open, pop up an error:
   else {
