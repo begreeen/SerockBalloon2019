@@ -18,15 +18,17 @@ struct radio_frame {
 
 static_assert(sizeof(radio_frame) == 18, "align?");
 
-constexpr int chipSelect = Pins::SD::ChipSelect;
+
+constexpr int chipSelect = Pins::EM1::SD::ChipSelect;
 File dataFile;
 
 
 // set radio receiver parameters - see comments below
 // remember to set the same radio parameters in
 // transmitter and receiver boards!
-Radio radio(Pins::Radio::ChipSelect,
-            Pins::Radio::DIO0,
+
+Radio radio(Pins::EM1::Radio::ChipSelect,
+            Pins::EM1::Radio::DIO0,
             435.0,                  // frequency in MHz
             Bandwidth_125000_Hz,    // bandwidth - check with CanSat regulations to set allowed value
             SpreadingFactor_11,      // see provided presentations to determine which setting is the best
