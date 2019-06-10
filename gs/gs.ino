@@ -18,6 +18,7 @@ struct radio_frame {
 
 static_assert(sizeof(radio_frame) == 18, "align?");
 
+
 constexpr int chipSelect = Pins::EM1::SD::ChipSelect;
 File dataFile;
 
@@ -25,6 +26,7 @@ File dataFile;
 // set radio receiver parameters - see comments below
 // remember to set the same radio parameters in
 // transmitter and receiver boards!
+
 Radio radio(Pins::EM1::Radio::ChipSelect,
             Pins::EM1::Radio::DIO0,
             435.0,                  // frequency in MHz
@@ -96,6 +98,7 @@ void loop() {
   // if the file is available, write to it:
   if (dataFile) {
     dataFile.println(data_string);
+    dataFile.flush();
   }
   // if the file isn't open, pop up an error:
   else {

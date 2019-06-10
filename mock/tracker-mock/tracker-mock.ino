@@ -1,4 +1,7 @@
 #include <CanSatKit.h>
+#include <SPI.h>
+#include <SD.h>
+
 
 using namespace CanSatKit;
 
@@ -6,7 +9,7 @@ constexpr auto LED = 13;
 
 Radio radio(Pins::Radio::ChipSelect,
             Pins::Radio::DIO0,
-            433.0,
+            436.0,
             Bandwidth_125000_Hz,
             SpreadingFactor_11,
             CodingRate_4_8);
